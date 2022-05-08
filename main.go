@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"math/big"
 	"net/http"
 	"os"
@@ -36,14 +35,7 @@ func main() {
 		panic(err)
 	}
 
-	pbk := pvk.Public()
-	pbkECDSA, ok := pbk.(*ecdsa.PublicKey)
-
-	if !ok {
-		panic("invalid public key")
-	}
-
-	addr := crypto.PubkeyToAddress(*pbkECDSA)
+	addr := crypto.PubkeyToAddress(pvk.PublicKey)
 
 	nonce, err := client.PendingNonceAt(context.Background(), addr)
 
@@ -97,10 +89,33 @@ func main() {
 	e.Use(middleware.CORS())
 
 	r.POST("/tokens", func(c echo.Context) error {
+		type Request struct {
+			ImageURL string `json:"image_url"`
+			Name     string `json:"name"`
+			Price    uint64 `json:"price"`
+		}
+
+		var request Request
+
+		if err := c.Bind(&request); err != nil {
+			return c.JSON(http.StatusBadRequest, err)
+		}
+
+		if request.ImageURL == "" {
+			return c.JSON(http.StatusBadRequest, "image_url is required")
+		}
+
+		if request.Name == "" {
+			return c.JSON(http.StatusBadRequest, "name is required")
+		}
+
+		if request.Price == 0 {
+			return c.JSON(http.StatusBadRequest, "price is required")
+		}
 
 		auth.Nonce = auth.Nonce.Add(auth.Nonce, big.NewInt(1))
 
-		reply, err := conn.Mint(auth, uuid.New().String())
+		reply, err := conn.Mint(auth, uuid.New().String(), request.Name, request.Price, request.ImageURL)
 
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, err)
