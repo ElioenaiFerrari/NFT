@@ -8,6 +8,7 @@ import (
 
 	"github.com/ElioenaiFerrari/blockchain/src/api"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
@@ -133,6 +134,37 @@ func main() {
 
 		return c.JSON(http.StatusOK, tokens)
 
+	})
+
+	r.PUT("/tokens", func(c echo.Context) error {
+		type Request struct {
+			TokenID string `json:"token_id"`
+			To      string `json:"to"`
+		}
+
+		var request Request
+
+		if err := c.Bind(&request); err != nil {
+			return c.JSON(http.StatusBadRequest, err)
+		}
+
+		if request.TokenID == "" {
+			return c.JSON(http.StatusBadRequest, "id is required")
+		}
+
+		if request.To == "" {
+			return c.JSON(http.StatusBadRequest, "to is required")
+		}
+
+		auth.Nonce = auth.Nonce.Add(auth.Nonce, big.NewInt(1))
+
+		reply, err := conn.Send(auth, request.TokenID, common.HexToAddress(request.To))
+
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err)
+		}
+
+		return c.JSON(http.StatusOK, reply)
 	})
 
 	e.Logger.Fatal(e.Start(":3000"))
