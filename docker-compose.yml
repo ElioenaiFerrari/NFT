@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  blockchain:
+    container_name: blockchain
+    hostname: blockchain
+    image: trufflesuite/ganache-cli:latest
+    ports:
+      - 8545:8545
